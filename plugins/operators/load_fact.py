@@ -12,11 +12,7 @@ from airflow.utils.decorators import apply_defaults
 class LoadFactOperator(BaseOperator):
 
     ui_color = '#F98866'
-    fact_query = """
-        DROP TABLE IF EXISTS {};
-        CREATE TABLE {} AS 
-        {}
-    """
+
 
     @apply_defaults
     def __init__(self,
@@ -38,15 +34,11 @@ class LoadFactOperator(BaseOperator):
 
             redshift = PostgresHook(postgres_conn_id = self.redshift_conn_id)
 
-            self.log.info('self.fact_query: {} running'.format(self.fact_query))
+            self.log.info('self.sql: {}'.format(self.sql))
 
-            fact_query_formatted = self.fact_query.format(self.table, self.table, self.sql)
+            redshift.run(self.sql)
 
-            self.log.info('fact_query_formatted: {}'.format(fact_query_formatted))
-
-            redshift.run(fact_query_formatted)
-
-            self.log.info('fact_query_formatted: success')
+            self.log.info('self.sql: success')
 
 
         except Exception as err:
