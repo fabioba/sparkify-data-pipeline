@@ -67,8 +67,12 @@ stage_events_to_redshift = StageToRedshiftOperator(
     redshift_conn_id = "redshift",
     aws_credentials_id="aws_credentials",
     table="staging_events",
-    s3_bucket="udacity-dend",
-    s3_key="log_data"
+    s3_bucket = 'udacity-dend',
+    #s3_key = 'log_data/{execution.year}/{execution.month}',
+    s3_key = 'log_data/2018/11',
+    #s3_json = 'log_data/log_json_path.json',
+    s3_json = '2018-11-01-events.json',
+    region= 'us-west-2'
 )
 
 stage_songs_to_redshift = StageToRedshiftOperator(
@@ -77,8 +81,10 @@ stage_songs_to_redshift = StageToRedshiftOperator(
     redshift_conn_id = "redshift",
     aws_credentials_id="aws_credentials",
     table="staging_songs",
-    s3_bucket="udacity-dend",
-    s3_key="song_data"
+    s3_bucket = 'udacity-dend',
+    s3_key = 'song_data/',
+    s3_json = 'auto',
+    region= 'us-west-2'
 )
 
 # create fact table from staging tables
@@ -119,4 +125,4 @@ data_quality_subdag_task = SubDagOperator(
 end_operator = DummyOperator(task_id='Stop_execution',  dag=dag)
 
 
-start_operator >> (stage_events_to_redshift, stage_songs_to_redshift) >> load_songplays_table >> create_table >> dim_subdag_task >> data_quality_subdag_task >> end_operator
+start_operator >> create_table >> (stage_events_to_redshift, stage_songs_to_redshift) >> load_songplays_table >> dim_subdag_task >> data_quality_subdag_task >> end_operator
