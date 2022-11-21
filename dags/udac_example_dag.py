@@ -45,7 +45,7 @@ default_args_test = {
     'start_date': datetime.now()
 }
 
-dag = DAG('dag_test',
+dag = DAG('udac_example_dag',
           default_args=default_args_test,
           description='Load and transform data in Redshift with Airflow'
           #schedule_interval='0 * * * *'
@@ -70,7 +70,7 @@ stage_events_to_redshift = StageToRedshiftOperator(
     table="staging_events",
     s3_bucket = 'udacity-dend',
     #s3_key = 'log_data/{execution.year}/{execution.month}',
-    s3_key = 'log_data/',
+    s3_key = 'log_json_path.json',
     s3_json = 'auto',
     #s3_json = '2018-11-01-events.json',
     region= 'us-west-2'
@@ -86,6 +86,7 @@ stage_songs_to_redshift = StageToRedshiftOperator(
     s3_key="song_data/A/A/C/TRAACCG128F92E8A55.json",
     region= 'us-west-2'
 )
+
 # create fact table from staging tables
 load_songplays_table = LoadFactOperator(
     task_id='Load_songplays_fact_table',

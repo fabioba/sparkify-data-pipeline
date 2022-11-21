@@ -13,9 +13,9 @@ class LoadFactOperator(BaseOperator):
 
     ui_color = '#F98866'
     fact_query = """
-        DROP TABLE IF EXISTS {table};
-        CREATE TABLE {table} AS 
-        {sql}
+        DROP TABLE IF EXISTS {};
+        CREATE TABLE {} AS 
+        {}
     """
 
     @apply_defaults
@@ -40,9 +40,13 @@ class LoadFactOperator(BaseOperator):
 
             self.log.info('self.fact_query: {} running'.format(self.fact_query))
 
-            redshift.run(self.fact_query)
+            fact_query_formatted = self.fact_query.format(self.table, self.table, self.sql)
 
-            self.log.info('self.fact_query: success')
+            self.log.info('fact_query_formatted: {}'.format(fact_query_formatted))
+
+            redshift.run(fact_query_formatted)
+
+            self.log.info('fact_query_formatted: success')
 
 
         except Exception as err:
