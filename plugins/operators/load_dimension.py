@@ -12,10 +12,10 @@ class LoadDimensionOperator(BaseOperator):
 
     ui_color = '#80BD9E'
     dim_query = """
-        DROP TABLE IF EXISTS {table};
-        CREATE TABLE {table} AS 
+        INSERT INTO public.{table}
         {sql}
     """
+
 
     @apply_defaults
     def __init__(self,

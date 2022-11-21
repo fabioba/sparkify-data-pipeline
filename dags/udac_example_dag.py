@@ -42,18 +42,11 @@ default_args = {
 with DAG('udac_example_dag',
           default_args=default_args,
           description='Load and transform data in Redshift with Airflow',
-          schedule_interval='0 * * * *'
+          schedule_interval='0 * * * *',
+          catchup=False
         ) as dag:
 
     start_operator = DummyOperator(task_id='Begin_execution',  dag=dag)
-
-    # create table if not exist
-    create_table = PostgresOperator(
-        task_id="create_table",
-        dag=dag,
-        postgres_conn_id="redshift",
-        sql = 'sql_queries/create_tables.sql'
-    )
 
     # copy data from S3 to redshift
     stage_events_to_redshift = StageToRedshiftOperator(
@@ -65,8 +58,8 @@ with DAG('udac_example_dag',
         s3_bucket = 'udacity-dend',
         #s3_key = 'log_data/{execution.year}/{execution.month}',
         s3_key = 'log_json_path.json',
-        s3_json = 'auto',
-        #s3_json = '2018-11-01-events.json',
+        #s3_json = 'auto',
+        s3_json = 's3://udacity-dend/log_json_path.json',
         region= 'us-west-2'
     )
 
@@ -78,6 +71,7 @@ with DAG('udac_example_dag',
         table="staging_songs",
         s3_bucket="udacity-dend",
         s3_key="song_data",
+        s3_json = 'auto',
         region= 'us-west-2'
     )
 
@@ -166,4 +160,4 @@ with DAG('udac_example_dag',
     end_operator = DummyOperator(task_id='Stop_execution',  dag=dag)
 
 
-start_operator >> create_table >> [stage_events_to_redshift, stage_songs_to_redshift] >> load_songplays_table >> load_dimension_tables >> data_quality_check >> end_operator
+start_operator >> [stage_events_to_redshift, stage_songs_to_redshift] >> load_songplays_table >> load_dimension_tables >> data_quality_check >> end_operator
