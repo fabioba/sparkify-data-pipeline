@@ -34,7 +34,7 @@ default_args = {
     'start_date': datetime(2019, 1, 12),
     'email_on_failure': True,
     # retry 3 times after failure
-    'retries': 0,
+    'retries': 3,
     'email_on_retry': False,
     # retry after 5 minutes
     'retry_delay': timedelta(minutes=5)
@@ -46,9 +46,9 @@ default_args_test = {
 }
 
 dag = DAG('udac_example_dag',
-          default_args=default_args_test,
-          description='Load and transform data in Redshift with Airflow'
-          #schedule_interval='0 * * * *'
+          default_args=default_args,
+          description='Load and transform data in Redshift with Airflow',
+          schedule_interval='0 * * * *'
         )
 
 start_operator = DummyOperator(task_id='Begin_execution',  dag=dag)
@@ -83,7 +83,7 @@ stage_songs_to_redshift = StageToRedshiftOperator(
     aws_credentials_id="aws_credentials",
     table="staging_songs",
     s3_bucket="udacity-dend",
-    s3_key="song_data/A/A/C/TRAACCG128F92E8A55.json",
+    s3_key="song_data",
     region= 'us-west-2'
 )
 

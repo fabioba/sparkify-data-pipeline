@@ -42,6 +42,7 @@ def get_data_quality_subdag(
         task_id='Run_data_quality_checks_artists',
         dag=dag,
         table = "artists",
+        col_name = "artist_id",
         redshift_conn_id = "redshift"
     )
 
@@ -49,6 +50,7 @@ def get_data_quality_subdag(
         task_id='Run_data_quality_checks_songplays',
         dag=dag,
         table = "songplays",
+        col_name = "playid",
         redshift_conn_id = "redshift"
     )
 
@@ -56,6 +58,7 @@ def get_data_quality_subdag(
         task_id='Run_data_quality_checks_songs',
         dag=dag,
         table = "songs",
+        col_name = "songid",
         redshift_conn_id = "redshift"
     )
 
@@ -64,6 +67,7 @@ def get_data_quality_subdag(
         task_id='Run_data_quality_checks_time',
         dag=dag,
         table = "time",
+        col_name = "start_time",
         redshift_conn_id = "redshift"
     )
 
@@ -72,6 +76,7 @@ def get_data_quality_subdag(
         task_id='Run_data_quality_checks_users',
         dag=dag,
         table = "users",
+        col_name = "userid",
         redshift_conn_id = "redshift")
 
 

@@ -15,12 +15,14 @@ class DataQualityOperator(BaseOperator):
     @apply_defaults
     def __init__(self,
                 table = "",
+                col_name = "",
                  redshift_conn_id = "",
                  *args, **kwargs):
 
         super(DataQualityOperator, self).__init__(*args, **kwargs)
         self.conn_id = redshift_conn_id
         self.table = table
+        self.col_name = col_name
 
     def execute(self, context):
         """
@@ -32,7 +34,7 @@ class DataQualityOperator(BaseOperator):
 
             redshift = PostgresHook(postgres_conn_id = self.conn_id)
 
-            records = redshift.get_records(f"SELECT COUNT(*) FROM {self.table}")
+            records = redshift.get_records(f"SELECT COUNT(*) FROM {self.table} WHERE {self.col_name} is NULL")
 
             if len(records) < 1 or len(records[0]) < 1:
                 raise ValueError(f"Data quality check failed. {self.table} returned no results")
