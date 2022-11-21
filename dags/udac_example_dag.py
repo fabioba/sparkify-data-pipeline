@@ -6,11 +6,12 @@ Author: Fabio Barbazza
 Date: Nov, 2022
 """
 from datetime import datetime, timedelta
-import os
+from airflow.decorators import task_group
 from airflow import DAG
 from airflow.operators.dummy_operator import DummyOperator
 from airflow.operators.postgres_operator import PostgresOperator
-from airflow.operators.subdag_operator import SubDagOperator
+from airflow.utils.task_group import TaskGroup
+
 
 from operators.stage_redshift import StageToRedshiftOperator
 from operators.load_dimension import LoadDimensionOperator
@@ -18,8 +19,6 @@ from operators.load_fact import LoadFactOperator
 from operators.data_quality import DataQualityOperator
 
 from helpers import SqlQueries
-from udac_example_dim_subdag import get_load_dim_subdag
-from udac_example_data_quality_subdag import get_data_quality_subdag
 
 import logging 
 logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.INFO)
@@ -40,84 +39,131 @@ default_args = {
     'retry_delay': timedelta(minutes=5)
 }
 
-
-dag = DAG('udac_example_dag',
+with DAG('udac_example_dag',
           default_args=default_args,
           description='Load and transform data in Redshift with Airflow',
           schedule_interval='0 * * * *'
+        ) as dag:
+
+    start_operator = DummyOperator(task_id='Begin_execution',  dag=dag)
+
+    # create table if not exist
+    create_table = PostgresOperator(
+        task_id="create_table",
+        dag=dag,
+        postgres_conn_id="redshift",
+        sql = 'sql_queries/create_tables.sql'
+    )
+
+    # copy data from S3 to redshift
+    stage_events_to_redshift = StageToRedshiftOperator(
+        task_id='stage_events',
+        dag=dag,
+        redshift_conn_id = "redshift",
+        aws_credentials_id="aws_credentials",
+        table="staging_events",
+        s3_bucket = 'udacity-dend',
+        #s3_key = 'log_data/{execution.year}/{execution.month}',
+        s3_key = 'log_json_path.json',
+        s3_json = 'auto',
+        #s3_json = '2018-11-01-events.json',
+        region= 'us-west-2'
+    )
+
+    stage_songs_to_redshift = StageToRedshiftOperator(
+        task_id='stage_songs',
+        dag=dag,
+        redshift_conn_id = "redshift",
+        aws_credentials_id="aws_credentials",
+        table="staging_songs",
+        s3_bucket="udacity-dend",
+        s3_key="song_data",
+        region= 'us-west-2'
+    )
+
+    # create fact table from staging tables
+    load_songplays_table = LoadFactOperator(
+        task_id='load_songplays_fact_table',
+        dag=dag,
+        table = "songplays",
+        sql = SqlQueries.songplay_table_insert,
+        redshift_conn_id = "redshift"
+    )
+
+
+    with TaskGroup(group_id='load_dimension_tables') as load_dimension_tables:
+        # load dimension tables
+        load_user_dimension_table = LoadDimensionOperator(
+            task_id='load_user_dim_table',
+            table = "users",
+            sql = SqlQueries.user_table_insert,
+            redshift_conn_id = "redshift"
         )
 
-start_operator = DummyOperator(task_id='Begin_execution',  dag=dag)
+        load_song_dimension_table = LoadDimensionOperator(
+            task_id='load_song_dim_table',
+            table = "songs",
+            sql = SqlQueries.song_table_insert,
+            redshift_conn_id = "redshift"
+        )
 
-# create table if not exist
-create_table = PostgresOperator(
-    task_id="create_table",
-    dag=dag,
-    postgres_conn_id="redshift",
-    sql = 'sql_queries/create_tables.sql'
-)
+        load_artist_dimension_table = LoadDimensionOperator(
+            task_id='load_artist_dim_table',
+            table = "artists",
+            sql = SqlQueries.artist_table_insert,
+            redshift_conn_id = "redshift"
+        )
 
-# copy data from S3 to redshift
-stage_events_to_redshift = StageToRedshiftOperator(
-    task_id='Stage_events',
-    dag=dag,
-    redshift_conn_id = "redshift",
-    aws_credentials_id="aws_credentials",
-    table="staging_events",
-    s3_bucket = 'udacity-dend',
-    #s3_key = 'log_data/{execution.year}/{execution.month}',
-    s3_key = 'log_json_path.json',
-    s3_json = 'auto',
-    #s3_json = '2018-11-01-events.json',
-    region= 'us-west-2'
-)
-
-stage_songs_to_redshift = StageToRedshiftOperator(
-    task_id='Stage_songs',
-    dag=dag,
-    redshift_conn_id = "redshift",
-    aws_credentials_id="aws_credentials",
-    table="staging_songs",
-    s3_bucket="udacity-dend",
-    s3_key="song_data",
-    region= 'us-west-2'
-)
-
-# create fact table from staging tables
-load_songplays_table = LoadFactOperator(
-    task_id='Load_songplays_fact_table',
-    dag=dag,
-    table = "songplays",
-    sql = SqlQueries.songplay_table_insert,
-    redshift_conn_id = "redshift"
-)
-
-# load dim subdag
-dim_task_id = "dim_subdag"
-dim_subdag_task = SubDagOperator(
-    subdag=get_load_dim_subdag(
-        "udac_example_dag",
-        dim_task_id,
-        start_date= datetime(2019, 1, 12),
-    ),
-    task_id=dim_task_id,
-    dag=dag,
-)
-
-# data quality checks subdag
-data_quality_task_id = "data_quality_subdag"
-data_quality_subdag_task = SubDagOperator(
-    subdag=get_data_quality_subdag(
-        "udac_example_dag",
-        data_quality_task_id,
-        start_date= datetime(2019, 1, 12),
-    ),
-    task_id=data_quality_task_id,
-    dag=dag,
-)
+        load_time_dimension_table = LoadDimensionOperator(
+            task_id='load_time_dim_table',
+            table = "time",
+            sql = SqlQueries.time_table_insert,
+            redshift_conn_id = "redshift"
+        )
 
 
-end_operator = DummyOperator(task_id='Stop_execution',  dag=dag)
+
+    with TaskGroup(group_id='data_quality_check') as data_quality_check:
+        # data quality checks
+        artists_data_quality_checks = DataQualityOperator(
+            task_id='artists_data_quality_checks',
+            table = "artists",
+            col_name = "artist_id",
+            redshift_conn_id = "redshift"
+        )
+
+        songplays_data_quality_checks = DataQualityOperator(
+            task_id='songplays_data_quality_checks',
+            table = "songplays",
+            col_name = "playid",
+            redshift_conn_id = "redshift"
+        )
+
+        songs_data_quality_checks = DataQualityOperator(
+            task_id='songs_data_quality_checks',
+            table = "songs",
+            col_name = "songid",
+            redshift_conn_id = "redshift"
+        )
 
 
-start_operator >> create_table >> (stage_events_to_redshift, stage_songs_to_redshift) >> load_songplays_table >> dim_subdag_task >> data_quality_subdag_task >> end_operator
+        time_data_quality_checks = DataQualityOperator(
+            task_id='time_data_quality_checks',
+            table = "time",
+            col_name = "start_time",
+            redshift_conn_id = "redshift"
+        )
+
+
+        users_data_quality_checks = DataQualityOperator(
+            task_id='users_data_quality_checks',
+            table = "users",
+            col_name = "userid",
+            redshift_conn_id = "redshift")
+
+
+
+    end_operator = DummyOperator(task_id='Stop_execution',  dag=dag)
+
+
+start_operator >> create_table >> [stage_events_to_redshift, stage_songs_to_redshift] >> load_songplays_table >> load_dimension_tables >> data_quality_check >> end_operator

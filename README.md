@@ -14,4 +14,4 @@ The source data resides in S3 and needs to be processed in Sparkify's data wareh
 
 
 ## Workflow
-![image](docs/images/example-dag.png)
+![image](docs/images/dag.png)
