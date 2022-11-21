@@ -22,7 +22,7 @@ class StageToRedshiftOperator(BaseOperator):
                 FROM '{}'
                 ACCESS_KEY_ID '{}'
                 SECRET_ACCESS_KEY '{}'
-                JSON '{}'
+                JSON 'auto'
                 """
     
     @apply_defaults
@@ -74,8 +74,7 @@ class StageToRedshiftOperator(BaseOperator):
                 self.table,
                 s3_path,
                 credentials.access_key,
-                credentials.secret_key,
-                self.s3_json
+                credentials.secret_key
             )
 
             self.log.info('formatted_sql: {}'.format(formatted_sql))
