@@ -11,18 +11,38 @@ from airflow.utils.decorators import apply_defaults
 class LoadDimensionOperator(BaseOperator):
 
     ui_color = '#80BD9E'
+    dim_query = """
+        DROP TABLE IF EXISTS {table};
+        CREATE TABLE {table} AS 
+        {sql}
+    """
 
     @apply_defaults
     def __init__(self,
-                 # Define your operators params (with defaults) here
-                 # Example:
-                 # conn_id = your-connection-name
+                table = "",
+                sql = "",
+                 redshift_conn_id="",
                  *args, **kwargs):
 
         super(LoadDimensionOperator, self).__init__(*args, **kwargs)
-        # Map params here
-        # Example:
-        # self.conn_id = conn_id
+        self.sql = sql
+        self.table = table
+        self.conn_id = redshift_conn_id
 
     def execute(self, context):
-        self.log.info('LoadDimensionOperator not implemented yet')
+        """
+        Execute
+        """
+        try:
+
+            redshift = PostgresHook(postgres_conn_id = self.conn_id)
+
+            self.log.info('self.dim_query: {} running'.format(self.dim_query))
+
+            redshift.run(self.dim_query)
+
+            self.log.info('self.dim_query: success')
+
+        except Exception as err:
+            self.log.exception(err)
+            raise err
