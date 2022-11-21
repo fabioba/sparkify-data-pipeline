@@ -40,10 +40,6 @@ default_args = {
     'retry_delay': timedelta(minutes=5)
 }
 
-default_args_test = {
-    'owner': 'udacity',
-    'start_date': datetime.now()
-}
 
 dag = DAG('udac_example_dag',
           default_args=default_args,
@@ -102,12 +98,11 @@ dim_subdag_task = SubDagOperator(
     subdag=get_load_dim_subdag(
         "udac_example_dag",
         dim_task_id,
-        start_date=datetime.utcnow(),
+        start_date= datetime(2019, 1, 12),
     ),
     task_id=dim_task_id,
     dag=dag,
 )
-
 
 # data quality checks subdag
 data_quality_task_id = "data_quality_subdag"
@@ -115,7 +110,7 @@ data_quality_subdag_task = SubDagOperator(
     subdag=get_data_quality_subdag(
         "udac_example_dag",
         data_quality_task_id,
-        start_date=datetime.utcnow(),
+        start_date= datetime(2019, 1, 12),
     ),
     task_id=data_quality_task_id,
     dag=dag,
