@@ -36,14 +36,14 @@ default_args = {
     'retries': 3,
     'email_on_retry': False,
     # retry after 5 minutes
-    'retry_delay': timedelta(minutes=5)
+    'retry_delay': timedelta(minutes=5),
+    'catchup': False
 }
 
 with DAG('udac_example_dag',
           default_args=default_args,
           description='Load and transform data in Redshift with Airflow',
-          schedule_interval='0 * * * *',
-          catchup=False
+          schedule_interval='0 * * * *'
         ) as dag:
 
     start_operator = DummyOperator(task_id='Begin_execution',  dag=dag)
